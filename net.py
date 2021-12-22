@@ -1,10 +1,10 @@
 '''
 Author: wbs2788
 Date: 2021-12-20 20:13:11
-LastEditTime: 2021-12-20 22:36:40
+LastEditTime: 2021-12-21 13:13:21
 LastEditors: wbs2788
 Description: 
-FilePath: \牧羊人\net.py
+FilePath: \Farmer-in-Minecraft\net.py
 
 '''
 import time
@@ -21,7 +21,7 @@ EPSILON = 0.9               # 最优选择动作百分比(有0.9的几率是最�
 GAMMA = 0.9                 # 奖励递减参数（衰减作用，如果没有奖励值r=0，则衰减Q值）
 TARGET_REPLACE_ITER = 4   # Q 现实网络的更新频率100次循环更新一次
 MEMORY_CAPACITY = 2000      # 记忆库大小
-N_ACTIONS = 4  # 棋子的动作0，1，2，3
+N_ACTIONS = 7  # 棋子的动作0，1，2，3
 N_STATES = 1
 
 #神经网络
@@ -50,29 +50,34 @@ class ResidualBlock(nn.Module):
         return x
 
 class Net(nn.Module):
-    def __init__(self, action_nums, n_f=256, n_res=3):
-        super(Net, self).__init__()
-
-        common_module_lst = nn.ModuleList([
-        nn.Conv2d(4, n_f, 3, 1, 1),
-        nn.BatchNorm2d(n_f),
-        nn.ReLU()
-        ])
-        common_module_lst.extend([ResidualBlock(n_f) for _ in range(n_res)])
-        self.body = nn.Sequential(*common_module_lst)
-
-        self.head_p = nn.Sequential(
-            nn.Conv2d(n_f, 2*action_nums, 1, 1),  
-            nn.BatchNorm2d(2),
-            nn.ReLU(),
-            nn.Linear(2*action_nums, action_nums),
-            nn.LogSoftmax(dim=-1)
-        )
+    def __init__(self, num_actions):
+        super(Net, self).__init__() 
+        self.p1 = nn.MaxPool2d(3)       
+        #self.c1 = nn.Conv2d(1, 8, 5, 1, 0)
+        #self.c2 = nn.Conv2d(8, 4, 9, 1, 0)
+        #self.c3 = nn.Conv2d(32, 64, 7, 1, 0)
+        #self.c4 = nn.Conv2d(64, 32, 5, 1, 0)
+        self.f1 = nn.Linear(49, 16)
+        self.f1.weight.data.normal_(0, 0.1)
+        self.f2=nn.Linear(16, num_actions)
+        self.f2.weight.data.normal_(0, 0.1)
 
     def forward(self, x):
-        x = self.body(x)
-        x = self.head_p(x)
-        return x
+        x = self.p1(x)
+        #x=self.c1(x)
+        #x=F.relu(x)
+        #x=self.c2(x)
+        #x=F.relu(x)
+        #x=self.c3(x)
+        #x=F.relu(x)
+        #x=self.c4(x)
+        #x=F.relu(x)
+        x=x.view(x.size(0),-1)
+        #print(x.shape)
+        x=self.f1(x)
+        x=F.relu(x)   
+        action=self.f2(x)
+        return action
 
 class DQN(object):
     def __init__(self):

@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+from torch._C import device
+
 from net import Net
 import os
 import sys
@@ -7,19 +9,19 @@ import time
 import datetime
 import json
 import numpy as np
-
+import torch
 
 # Exploration factor
 epsilon = 0.1
 
 
 class Experience(object):
-    def __init__(self, model:Net, max_memory=100, discount=0.95):
+    def __init__(self, model:Net, max_memory=100, discount=0.95, num_actions=7):
         self.model = model
         self.max_memory = max_memory
         self.discount = discount
         self.memory = list()
-        self.num_actions = model.output_shape[-1]
+        self.num_actions = num_actions
 
     def remember(self, episode):
         # episode = [envstate, action, reward, envstate_next, game_over]
@@ -32,7 +34,9 @@ class Experience(object):
     def predict(self, envstate):
         if (envstate.ndim == 1):
             envstate = np.array([envstate])
-        return self.model.predict(envstate)[0]
+            envstate = envstate.reshape((1, 1, 21, 21))
+            envstate = torch.FloatTensor(envstate).cuda()
+        return self.model(envstate)[0].detach().cpu().numpy()
 
     def get_data(self, data_size=10):
         # envstate 1d size (1st element of episode
